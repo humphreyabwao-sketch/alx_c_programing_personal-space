@@ -11,6 +11,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/* Constants */
+#define TOKEN_BUFFER_SIZE 64
+#define TOKEN_DELIMITERS " \t\r\n\a"
+
 /* Function prototypes */
 void initialize_shell(void);
 void display_shell_prompt(void);
@@ -24,7 +28,7 @@ int shell_exit(char **args);
 int num_builtins(void);
 
 /* Global variables */
-char *builtin_str[];
-int (builtin_func[]) (char *) = {&shell_cd, &shell_help, &shell_exit};
+extern char *builtin_str[];
+extern int (*builtin_func[]) (char **);
 
 #endif /* SHELL_H */

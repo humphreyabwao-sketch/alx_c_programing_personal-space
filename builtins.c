@@ -1,33 +1,57 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "shell.h"
 
-/**
- * cd_built-in - Changes the current working directory of the shell
- * @args: List of arguments passed to the cd command
- * Return: Always returns 1, to continue executing the shell
- */
-int cd_built_in(char **args)
-{
-  if (args[1] == NULL)
-  {
-    fprintf(stderr, "Expected argument to \"cd\"\n");
-  }
-  else
-  {
-    if (chdir(args[1]) != 0)
-    {
-      perror("Failed to change directory");
-    }
-  }
+int shell_cd(char **args);
+int shell_help(char **args);
+int shell_exit(char **args);
 
-  return 1;
+char *builtin_str[] = {
+"cd",
+"help",
+"exit"
+};
+
+int (*builtin_func[]) (char **) = {
+&shell_cd,
+&shell_help,
+&shell_exit
+};
+
+int num_builtins() {
+return sizeof(builtin_str) / sizeof(char *);
 }
 
-/**
- * exit_built-in - Exits the shell
- * @args: List of arguments passed to the exit command
- * Return: Always returns 0, to terminate the shell
- */
-int exit_built_in(char **args)
+int shell_cd(char **args)
 {
-  return 0;
+if (args[1] == NULL) {
+fprintf(stderr, "shell: expected argument to \"cd\"\n");
+} else {
+if (chdir(args[1]) != 0) {
+perror("shell");
+}
+}
+return 1;
+}
+
+int shell_help(char **args)
+{
+int i;
+printf("Shell\n");
+printf("Type program names and arguments, and hit enter.\n");
+printf("The following are built in:\n");
+
+for (i = 0; i < num_builtins(); i++) {
+printf("  %s\n", builtin_str[i]);
+}
+
+printf("Use the man command for information on other programs.\n");
+return 1;
+}
+
+int shell_exit(char **args)
+{
+return 0;
 }

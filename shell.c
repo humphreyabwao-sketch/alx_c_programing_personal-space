@@ -1,120 +1,98 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <string.h>
+#include "shell.h"
 
-Function prototypes
-void initialize_shell();
-void display_shell_prompt();
-char* read_user_input();
-char** parse_user_input(char* input);
-void execute_command(char** tokens);
-
- Initialize the shell
-void initialize_shell() {
-    // Perform any necessary initialization steps
-    printf("Welcome to MyShell!\n");
+int main(int argc, char **argv)
+{
+initialize_shell();
+while (true) {
+display_shell_prompt();
+char *input = read_user_input();
+char **tokens = parse_user_input(input);
+int exit_status = execute_command(tokens);
+free(input);
+free(tokens);
+if (exit_status == 1) {
+break;
+}
+}
+return 0;
 }
 
- Main function
-int main() {
-    initialize_shell();
-
-    while (1) {
-        // Display the shell prompt and read user input
-        display_shell_prompt();
-        char* input = read_user_input();
-
-        // Parse user input into tokens
-        char** tokens = parse_user_input(input);
-
-        // Execute command based on parsed tokens
-        execute_command(tokens);
-
-        // Free allocated memory
-        free(input);
-        free(tokens);
-    }
-
-    return 0;
+void initialize_shell(void)
+{
+printf("Initializing shell...\n");
 }
 
-Display the shell prompt
-void display_shell_prompt() {
-    printf("$ ");
+void display_shell_prompt(void)
+{
+printf("$ ");
 }
 
-Read user input
-char* read_user_input() {
-    char* input = NULL;
-    ssize_t buffer_size = 0;
-
-    // Read input from the user
-    getline(&input, &buffer_size, stdin);
-
-    // Remove newline character from input
-    input[strcspn(input, "\n")] = '\0';
-
-    return input;
+char *read_user_input(void)
+{
+char *input = NULL;
+ssize_t buffer_size = 0;
+getline(&input, &buffer_size, stdin);
+return input;
 }
 
-Parse user input into tokens
-char** parse_user_input(char* input) {
-    int buffer_size = 64, position = 0;
-    char** tokens = malloc(buffer_size * sizeof(char*));
-    char* token;
-
-    // Check if allocation was successful
-    if (!tokens) {
-        fprintf(stderr, "Memory allocation error\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Split input into tokens
-    token = strtok(input, " ");
-    while (token != NULL) {
-        tokens[position] = token;
-        position++;
-
-        // Increase buffer size if necessary
-        if (position >= buffer_size) {
-            buffer_size += 64;
-            tokens = realloc(tokens, buffer_size * sizeof(char*));
-
-            // Check if reallocation was successful
-            if (!tokens) {
-                fprintf(stderr, "Memory allocation error\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        token = strtok(NULL, " ");
-    }
-    tokens[position] = NULL;
-
-    return tokens;
+char **parse_user_input(char *input)
+{
+int buffer_size = TOKEN_BUFFER_SIZE;
+int position = 0;
+char **tokens = malloc(buffer_size * sizeof(char*));
+if (!tokens) {
+fprintf(stderr, "Allocation error\n");
+exit(EXIT_FAILURE);
+}
+char *token = strtok(input, TOKEN_DELIMITERS);
+while (token) {
+tokens[position] = token;
+position++;
+if (position >= buffer_size) {
+buffer_size += TOKEN_BUFFER_SIZE;
+tokens = realloc(tokens, buffer_size * sizeof(char*));
+if (!tokens) {
+fprintf(stderr, "Allocation error\n");
+exit(EXIT_FAILURE);
+}
+}
+token = strtok(NULL, TOKEN_DELIMITERS);
+}
+tokens[position] = NULL;
+return tokens;
 }
 
-Execute command based on parsed tokens
-void execute_command(char** tokens) {
-    pid_t pid, wpid;
-    int status;
+int execute_command(char **tokens)
+{
+if (tokens[0] == NULL) {
+return 0;
+}
+for (int i = 0; i < num_builtins(); i++) {
+if (strcmp(tokens[0], builtin_str[i]) == 0) {
+return (*builtin_func[i])(tokens);
+}
+}
+return launch_process(tokens);
+}
 
-    pid = fork();
-    if (pid == 0) {
-        // Child process
-        if (execvp(tokens[0], tokens) == -1) {
-            perror("MyShell");
-        }
-        exit(EXIT_FAILURE);
-    } else if (pid < 0) {
-        // Fork error
-        perror("MyShell");
-    } else {
-        // Parent process
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    }
+int launch_process(char **args)
+{
+pid_t pid, wpid;
+int status;
+
+pid = fork();
+if (pid == 0) {
+if (execvp(args[0], args) == -1) {
+perror("shell");
+}
+exit(EXIT_FAILURE);
+} else if (pid < 0) {
+perror("shell");
+} else {
+do {
+wpid = waitpid(pid, &status, WUNTRACED);
+} while (!WIFEXITED(status) && !WIFSIGNALED(status));
+}
+
+return 0;
 }
